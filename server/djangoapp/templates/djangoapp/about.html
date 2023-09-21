@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    {% load static %}
     <title>Best Cars - About Us</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
@@ -30,7 +31,25 @@
                 </li>
             </ul>
         </div>
-    </nav>    
+        <div class="nav navbar-nav navbar-right">
+            {% if user.is_authenticated %}
+            <li>
+                <a class="btn" style="color:white;" href="#">({{ user.username }})</a>
+                <a class="btn btn-outline-light" href="{% url 'djangoapp:logout' %}?next={{ request.path }}">Logout</a>
+            </li>
+            {% else %}
+            <form class="form-inline" action="{% url 'djangoapp:login' %}?next={{ request.path }}" method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <input id="username" name="username" class="form-control mr-sm-2" type="text" placeholder="Username" required>
+                    <input id="psw" name="psw" class="form-control mr-sm-2" type="password" placeholder="Password" required>
+                </div>
+                <button class="btn btn-outline-light mr-sm-2 my-sm-1" type="submit">Login</button>
+                <a class="btn btn-outline-light" href="{% url 'djangoapp:signup' %}">Sign Up</a>
+            </form>
+            {% endif %}
+        <div>
+    </nav>
 
     <br>
     <h1>
