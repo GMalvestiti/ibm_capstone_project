@@ -36,13 +36,14 @@ def get_request(url, **kwargs):
 def post_request(url, json_payload, **kwargs):
     print(f"POST to {url}")
     try:
-        response = requests.post(url, params=kwargs, json=json_payload)
-    except:
-        print("An error occurred while making POST request. ")
-    status_code = response.status_code
-    print(f"With status {status_code}")
+        print(json.dumps(json_payload))
+        response = requests.post(url, json=json_payload)
+        print(f"With status {response.status_code}")
+        return response
+    except Exception as e:
+        print(f"An error occurred while making POST request: {str(e)}")
+        return None  # You should decide what to return or how to handle the error
 
-    return response
 
 def get_dealers_from_cf(url, **kwargs):
     results = []
@@ -71,7 +72,6 @@ def get_dealers_by_id(url, dealer_id):
 
     # Create a CarDealer object from response
     for dealer in dealers:
-        print(dealer.id)
         if dealer.id == dealer_id:
             return dealer
 

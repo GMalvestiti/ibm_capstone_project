@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.views import generic
 from django.contrib.auth import login, logout, authenticate
 from django.contrib import messages
-from datetime import datetime
+from datetime import date, datetime
 import logging
 import json
 
@@ -90,22 +90,25 @@ def get_dealerships(request):
         url = "https://gustavosmalv-3000.theiadocker-1-labs-prod-theiak8s-4-tor01.proxy.cognitiveclass.ai/dealerships/get"
         # Get dealers from the URL
         dealerships = get_dealers_from_cf(url)
+        context["dealerships"] = dealerships
         # Concat all dealer's short name
-        dealer_names = ' '.join([dealer.short_name for dealer in dealerships])
+        #dealer_names = ' '.join([dealer.short_name for dealer in dealerships])
         # Return a list of dealer short name
-        return HttpResponse(dealer_names)
-
-        return render(request, 'djangoapp/index.html', context)
+        #return HttpResponse(dealer_names)
+    return render(request, 'djangoapp/index.html', context)
 
 def get_dealer_details(request, dealer_id):
     context = {}
     if request.method == "GET":
         url = "https://gustavosmalv-5000.theiadocker-1-labs-prod-theiak8s-4-tor01.proxy.cognitiveclass.ai/api/get_reviews?id={0}".format(dealer_id)
+        url_dealer = f"https://gustavosmalv-3000.theiadocker-1-labs-prod-theiak8s-4-tor01.proxy.cognitiveclass.ai/dealerships/get"
 
         reviews = get_dealer_reviews_from_cf(url, dealer_id=dealer_id)
+        dealer = get_dealers_by_id(url_dealer, dealer_id=dealer_id)
         context = {
             "reviews":  reviews,
-            "dealer_id": dealer_id
+            "dealer_id": dealer_id,
+            "dealer": dealer
         }
     return render(request, 'djangoapp/dealer_details.html', context)
 
@@ -122,7 +125,6 @@ def add_review(request, dealer_id):
                 "dealer": get_dealers_by_id(url, dealer_id=dealer_id),
             }
             return render(request, 'djangoapp/add_review.html', context)
-
         # POST request posts the content in the review submission form to the Cloudant DB using the post_review Cloud Function
         if request.method == "POST":
             form = request.POST
@@ -131,28 +133,28 @@ def add_review(request, dealer_id):
             review["dealership"] = dealer_id
             review["review"] = form["content"]
             review["purchase"] = form.get("purchasecheck")
-            if review["purchase"]:
-                review["purchase_date"] = datetime.strptime(form.get("purchasedate"), "%m/%d/%Y").isoformat()
             car = CarModel.objects.get(pk=form["car"])
             review["car_make"] = car.car_make.name
             review["car_model"] = car.name
-            review["car_year"] = car.year
+            review["car_year"] = car.year.isoformat()
             
             # If the user bought the car, get the purchase date
             if form.get("purchasecheck"):
-                review["purchase_date"] = datetime.strptime(form.get("purchasedate"), "%m/%d/%Y").isoformat()
+                review["purchase_date"] = datetime.strptime(form.get("purchasedate"), '%m/%d/%Y').isoformat()
             else: 
                 review["purchase_date"] = None
-
-            url = "https://gustavosmalv-5000.theiadocker-1-labs-prod-theiak8s-4-tor01.proxy.cognitiveclass.ai/api/post_reviews?id={0}".format(dealer_id)  # API Cloud Function route
-            json_payload = {"review": review}  # Create a JSON payload that contains the review data
-
-            # Performing a POST request with the review
-            result = post_request(url, json_payload, delaer_id=dealer_id)
+            
+            review["id"] = 10
+            
+            url = "https://gustavosmalv-5000.theiadocker-1-labs-prod-theiak8s-4-tor01.proxy.cognitiveclass.ai/api/post_review?id={0}".format(dealer_id)
+            json_payload = review # {"review": review}  # Create a JSON payload that contains the review data
+            
+            # POST request with the review
+            result = post_request(url, json_payload, dealer_id=dealer_id)
             if int(result.status_code) == 200:
                 print("Review posted successfully.")
 
-            # After posting the review the user is redirected back to the dealer details page
+            # Redirect to dealer details
             return redirect("djangoapp:dealer_details", dealer_id=dealer_id)
 
     else:
